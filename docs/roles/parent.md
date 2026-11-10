@@ -14,6 +14,9 @@
 - At Stage 3, run the SQL source gates (G3S) the SQL Analyst writes; send their results to the Risk Reviewer. G3K remains a parent-owned Python gate.
 - After reconciliation (G4b), send the reconciled evidence to the Risk Reviewer for the post-reconciliation review (G4c) before the release gate (G4d).
 - At Stage 5, run G5 (claims) on the sealed claims ledger and deliverables, then present the sealed finish package (claims ledger and deliverables, with hashes) to the owner for approval of those exact hashes. Only then run the R Procedure Gate `finalize` and G6 (certificate).
+- **Version 3 outside review.** After G2, send the OR1 packet (brief, proposed locked question, terms; frozen copies; no data or data structure) to the dedicated ChatGPT chat. At Stage 5, after the draft finish, send the OR2 packet (locked question, claims ledger, draft recommendation, cited official numbers). Capture the reply verbatim, seal it, and run G0. Have the Lead Designer (or the role that owns the file) answer every issue in the dispositions file as fixed (where) or not fixed (reason); route fixes through re-review and the base gate as new versions. Write the owner card listing every unresolved blocking issue, run G2R / G5R, and show the card with the lock or finish card. Record the card hash in the owner's approval.
+- If ChatGPT is usage-limited, retry up to 3 times, 5 minutes apart, logging each attempt; then mark the review skipped, log `OR-SKIPPED`, put it on the owner card and proceed.
+- Never give ChatGPT code, the data, the data structure (OR1) or the key, and never count its view as a vote.
 - Run the published Python gates. Do not substitute manual stand-ins for an implemented gate.
 - Decide routine technical matters yourself. Escalate only materially consequential analytical or business changes and genuinely required approvals.
 - Count repair rounds per defect; after 3 on the same defect, stop and escalate.

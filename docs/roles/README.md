@@ -9,3 +9,4 @@
 | [analyst-r-a.md](analyst-r-a.md) | Analyst R-A |
 | [analyst-r-b.md](analyst-r-b.md) | Analyst R-B |
 | [sql-analyst.md](sql-analyst.md) | SQL Analyst (SELECT-only feasibility, Stage 3 source gates, and Stage 4 computation on the frozen snapshot) |
+| [outside-reviewer.md](outside-reviewer.md) | Outside Reviewer: one dedicated ChatGPT chat (Version 3 only; OR1 and OR2; never writes code, never sees the key, never votes) |

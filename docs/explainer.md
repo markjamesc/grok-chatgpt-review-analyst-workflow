@@ -6,4 +6,6 @@
 4. **Execution.** Build the analysis twice in R and once in SQL, each independently, on the frozen hashed snapshot (not live systems). Test on the fixtures, have the parent reconcile SQL against R, have the Risk Reviewer check the reconciled evidence, and release only when every gate passes.
 5. **Finish.** Interpret only the sealed results, have the claims checked, recommend an action, and score blind afterwards. Stage 5 reuses the existing bots: the Lead Designer writes the interpretation, the Second Designer checks the inference, and the Risk Reviewer audits every number. The Risk Reviewer may recompute arithmetic from the sealed results, but never sees the answer key.
 
+**Version 3 adds two outside reviews by ChatGPT.** After the framing passes its gate, ChatGPT reads the brief and the proposed question (no data) and lists anything ambiguous that could change the answer (OR1). After the draft finish, it reads the locked question, the official numbers, the draft recommendation and the claims, and says whether the conclusion follows (OR2). It never writes code, never sees the key and never votes; the Grok team answers every point, and the owner sees anything blocking that was not fixed.
+
 A mistake early carries forward, so Stage 3 matters most.

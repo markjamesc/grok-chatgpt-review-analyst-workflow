@@ -5,18 +5,20 @@ Each step is: parent packs → child works → parent captures and seals → gat
 | Stage | Author | Reviewers | Gate | Owner touchpoint |
 |---|---|---|---|---|
 | 1 Start | Lead Designer (decision document) | — (parent pins the workflow and checks it at G1) | G1 decision | None unless the decision is unclear |
-| 2 Framing | Lead Designer | Second Designer, Risk Reviewer | G2 question lock | Approve the locked question |
+| 2 Framing | Lead Designer | Second Designer, Risk Reviewer | G2 question lock | — |
+| 2 Outside review OR1 (Version 3) | — (ChatGPT reviews; Grok side answers every issue) | ChatGPT outside reviewer | G2R | Approve the locked question, seeing the OR1 card (unresolved blocking issues or OR-SKIPPED) |
 | 2→3 Feasibility | SQL Analyst | Risk Reviewer | G2F feasibility | Only on `partly` / `no` |
 | 3 Design | Lead Designer; SQL Analyst (source gates) | Second Designer (independent design, then compare), Risk Reviewer (red-team and source-gate review) | G3S SQL source gates, G3K early key/count checks, G3 design lock | Approve the exact design hash |
 | 4 Execution | R-A, R-B, SQL Analyst | Risk Reviewer (post-reconciliation evidence) | G4a fixtures, G4b reconciliation, G4c post-reconciliation review, G4d release | Only after 3 failed repairs or a changed decision |
-| 5 Finish | Lead Designer | Second Designer (inference), Risk Reviewer (numbers) | G5 claims, G6 certificate | Approve the exact finish package hashes (after G5, before G6) |
+| 5 Finish | Lead Designer | Second Designer (inference), Risk Reviewer (numbers); ChatGPT outside reviewer on the draft (OR2, Version 3) | G5 claims, G5R outside review, G6 certificate | Approve the exact finish package hashes, seeing the OR2 card (after G5R, before G6) |
 | Score | Scorer outside live roles (earlier ChatGPT key preparer) | — | — | — |
 
 ## Notes
 - Every packet passes G0 (packet integrity) before it is sent, and every reply is checked by G0 when captured. A child's work counts only when its reply ends with `ANSWERED <PACKET_ID>` after a non-blank list of produced files.
 - After a repair of a reviewed file (for example a Stage 2 framing repair), the current version goes back to the required reviewers before the gate. G2, G3 and G5 fail a review of a superseded file.
 - The first Stage 2 framing states the capacity rule (including whether an option may be taken at a loss) and the decision unit (pooled or per site/segment) explicitly.
-- Stage 5 order: Lead Designer write-up and claims ledger → Second Designer inference review and Risk Reviewer number audit → G5 → owner approves the exact finish package hashes → R Procedure Gate `finalize` → G6 certificate. G4d never overwrites a Workflow Gate report the R Procedure Gate has recorded.
+- Stage 2 order (Version 3): Lead Designer framing → Second Designer critique and Risk Reviewer framing check → G2 → OR1 packet to ChatGPT (brief, proposed question, terms; no data) → dispositions; any fix is a new version that goes back through re-review and G2 → G2R → owner approves the locked question with the OR1 card → G2F.
+- Stage 5 order (Version 3): Lead Designer write-up and claims ledger (draft finish) → OR2 packet to ChatGPT (locked question, official numbers, draft recommendation, claims) → dispositions and fixes → Second Designer inference review and Risk Reviewer number audit of the current files → G5 → G5R → owner approves the exact finish package hashes with the OR2 card → R Procedure Gate `finalize` → G6 certificate. G4d never overwrites a Workflow Gate report the R Procedure Gate has recorded.
 - Stages 1–2 never see data values. Feasibility sees structure and quality only, not values or the answer key, and cannot add or reshape questions.
 - Stage 1 has no Second Designer role. The Lead Designer writes the Stage 1 decision document. The parent pins the workflow and checks it at the start gate G1.
 - At Stage 2, the Second Designer critiques the Lead Designer's framing and the Risk Reviewer checks that framing alongside it. The Risk Reviewer also reviews G2F feasibility.

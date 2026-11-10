@@ -35,6 +35,15 @@ ANSWERED <PACKET_ID>
 - Check the reply against EXPECTED OUTPUT before sealing it.
 - A correction is a new packet with a `-vN` suffix that names what it supersedes.
 
+## Outside-review packets for ChatGPT (Version 3)
+- OR1 (Stage 2) and OR2 (Stage 5) packets use `ROLE: Outside Reviewer`. See [outside-review.md](outside-review.md).
+- Freeze a copy of every input under `artifacts/outside_review/<OR>/inputs/<original path>` and list the copies.
+- OR1: the brief, the proposed locked question and its terms only. No data, no data structure, no code.
+- OR2: the locked question, the claims ledger, its deliverables (the draft recommendation) and only the evidence its claims cite.
+- `RULES` include `do not write code` and `do not vote`. `EXPECTED OUTPUT` is one path, where the parent captures the reply.
+- The reply is a numbered list of issues (`[blocking]` or `[minor]`, each with `Proposed fix:`), or `NO ISSUES`, ending `ANSWERED <PACKET_ID>`. It has no produced-files list.
+- If ChatGPT is usage-limited, retry up to 3 times, 5 minutes apart, then mark the packet `skipped` and log `OR-SKIPPED`.
+
 ## Stage 3 packets for the Second Designer
 - First packet: Stage 3 inputs only. Do not include the Lead Designer's draft or reasoning.
 - After the Second Designer's independent design is sealed, send a second packet with the lead's design so the Second Designer can compare and report differences.

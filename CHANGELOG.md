@@ -2,6 +2,17 @@
 
 All notable changes to this design draft are recorded here. Dates are America/Chicago.
 
+## 0.3.0 — 2026-11-10 — Version 3: Grok Bot with ChatGPT outside review
+
+- New repository for **Version 3**, started from the Version 2 repository at `4680958`. Versions 1 and 2 are unchanged.
+- **OR1** (Stage 2, after G2, before the owner locks the question): one dedicated ChatGPT chat reviews the brief, the proposed locked question and its terms, with no data and no data structure, for ambiguity or assumptions that could change the answer.
+- **OR2** (Stage 5, after the draft finish, before G5 and the owner finish approval): ChatGPT reviews the locked question, official numbers, draft recommendation and claims: does the conclusion follow, does any claim exceed the evidence?
+- Reply format: numbered issues, each `[blocking]` or `[minor]` with `Proposed fix:` (or `NO ISSUES`), ending `ANSWERED <PACKET_ID>`. ChatGPT never writes code, never sees the key and never votes.
+- Every issue gets a disposition from the Grok side, fixed (where) or not fixed (reason). Unfixed blocking issues go on the owner's lock or finish card. A usage limit gets 3 retries 5 minutes apart, then the review is skipped and logged `OR-SKIPPED`, shown to the owner.
+- New gates **G2R** and **G5R** (`gates/outside_review.py`, `gates/or_format.py`). G0 accepts `outside-reviewer` packets with the outside-review reply contract and status `skipped` for them only. G6 requires G2R and G5R done or skipped, skipped packets equal to the logged skips, and owner approvals naming the OR1 and OR2 card hashes (`artifacts/stage2_owner_question_approval.json` is new).
+- New tests `gates/tests/test_outside_review.py` (parser unit tests and planted-defect gate tests); the R-certified fixture now includes OR1 and OR2.
+- Docs: new `docs/outside-review.md` and `docs/roles/outside-reviewer.md`; README, stages, gates, handoff, rules, comparison, explainer, lessons (L10), parent and Lead Designer roles and the gates README updated.
+
 ## 0.2.0 — 2026-11-10
 
 - Implemented and tested **G0 packet integrity** (`gates/packet.py`): every packet in `artifacts/packets/index.json` must keep its sealed hash once sent, carry every handoff field, list whole current inputs (hash and byte count, every part of a split input), take nothing from a forbidden or answer-key path, name the answer key under NOT ALLOWED TO SEE, contain no `TEMPLATE` text or unfilled placeholders, and require `ANSWERED <PACKET_ID>`. An answered packet needs a sealed reply whose last line is `ANSWERED <PACKET_ID>` and whose produced-files list is not blank and covers every expected output. A file on disk is not a completed send.

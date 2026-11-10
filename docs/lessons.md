@@ -16,3 +16,6 @@ Process lessons from the head-to-head benchmark run (2026-11-10; no case content
 - L7 | A leftover template note went out in a sent packet | G0 rejects `TEMPLATE` text and unfilled placeholders | test_g0_template_marker_left_in_packet, test_g0_unfilled_placeholder
 - L8 | Python gates were missing from the pinned workflow, so manual stand-ins were used, including for claims and certificate | publish and pin the Python gates G0-G6; no manual stand-in for an implemented gate | gates/tests/test_finish_gates.py
 - L9 | The first framing left the capacity/loss rule and the decision unit implicit; a repair round closed them | the Lead Designer states both explicitly in the first framing | none (role text)
+
+Version 3 design lesson (2026-11-10; no case content or answers):
+- L10 | Same-family reviewers can share one reading of an ambiguous term | add a different-family outside review at the question lock and the finish, answered issue by issue, unresolved blocking issues shown to the owner | gates/tests/test_outside_review.py

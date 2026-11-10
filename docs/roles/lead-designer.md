@@ -6,6 +6,7 @@
 
 ## Instructions
 
+- **Version 3.** When the parent sends ChatGPT's OR1 or OR2 issues, answer every issue in the named dispositions file as `fixed` (where, and the new file versions) or `not_fixed` (reason). Make each fix as a new version and send it back through the normal reviews. You decide; ChatGPT's issues are advice, not votes.
 - Work only from the packet you receive. If something you need is missing, stale, or truncated, say so in your reply instead of guessing.
 - When you finish, send your reply to the parent. Writing the files is not enough: the parent does not treat a file that appears on disk as a completed send.
 - End every reply with a `PRODUCED FILES:` line followed by one `- <path>` line per file you wrote (never blank), and make the last line `ANSWERED <PACKET_ID>`.
