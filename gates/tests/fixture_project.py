@@ -253,9 +253,11 @@ def add_stage5(root, claims=None):
 
 
 def approve_finish(root, text="Approved: finish package as listed"):
+    card = os.path.join(root, OR_CARD["OR2"])
     return wj(root, "artifacts/stage5_owner_approval.json", {
         "claims_sha256": sha(os.path.join(root, "artifacts/stage5_claims.json")),
-        "deliverables": [ref(root, d) for d in DELIVERABLES], "approval_text": text, "approval_timestamp": "2026-11-10T09:00:00-06:00"})
+        "deliverables": [ref(root, d) for d in DELIVERABLES], "or2_card_sha256": sha(card) if os.path.exists(card) else None,
+        "approval_text": text, "approval_timestamp": "2026-11-10T09:00:00-06:00"})
 
 
 def packet_text(root, pid, role="Risk Reviewer", stage="4", inputs=None, extra="", expected="artifacts/stage4/reviews/risk_reviewer_g4c.json",
@@ -281,10 +283,20 @@ def reply_text(pid, produced=("artifacts/stage4/reviews/risk_reviewer_g4c.json",
     return body + (last if last is not None else f"ANSWERED {pid}") + "\n"
 
 
-def add_packets(root, packets=None):
-    """One answered Stage 4 packet (G4c review) by default. packets: list of (id, packet text, status, reply text|None)."""
+def _outside_rows(root, keep=True):
+    """Outside-review rows (ids with -OR) already in the index; add_packets keeps them (Version 3)."""
+    p = os.path.join(root, "artifacts/packets/index.json")
+    if not keep or not os.path.exists(p):
+        return []
+    return [r for r in rj(root, "artifacts/packets/index.json").get("packets", []) if "-OR" in str(r.get("id"))]
+
+
+def add_packets(root, packets=None, keep_outside=True):
+    """One answered Stage 4 packet (G4c review) by default. packets: list of (id, packet text, status, reply text|None).
+    Outside-review packets already in the index are kept (Version 3)."""
     packets = packets if packets is not None else [("CASE-4-01", packet_text(root, "CASE-4-01"), "answered", reply_text("CASE-4-01"))]
-    rows = []
+    new_ids = {p[0] for p in packets}
+    rows = [r for r in _outside_rows(root, keep_outside) if r["id"] not in new_ids]
     for pid, body, status, rep in packets:
         pr = wt(root, f"packets/grok/{pid}.md", body)
         row = {"id": pid, "path": pr["path"], "status": status, "sha256": pr["sha256"]}
@@ -293,3 +305,123 @@ def add_packets(root, packets=None):
         rows.append(row)
     return wj(root, "artifacts/packets/index.json", {"packets": rows, "forbidden_strings": ["do-not-ship-marker"],
                                                      "forbidden_path_prefixes": ["keys/"]})
+
+
+# ------------------------------------------------------------------------------------------------ Version 3: outside reviews
+OR_CARD = {"OR1": "artifacts/outside_review/OR1_card.md", "OR2": "artifacts/outside_review/OR2_card.md"}
+BRIEF = "Synthetic brief: decide whether to expand service for customers whose spend is above a threshold.\n"
+OR_ISSUES = {
+    "OR1": [("blocking", "The window end is not stated as inclusive.", "State the window end as inclusive.", "fixed"),
+            ("minor", "Active customer is not defined in the terms.", "Define active as one or more orders.", "not_fixed"),
+            ("blocking", "The threshold could be read as per order or per customer.", "Say per customer total.", "not_fixed")],
+    "OR2": [("minor", "The decision sentence does not repeat the threshold.", "Repeat the threshold in the decision.", "fixed")],
+}
+
+
+def or_inputs(review):
+    if review == "OR1":
+        return ["brief/BRIEF.md", "artifacts/stage2_framing.json", "docs/stage2/FRAMING_RECORD.md"]
+    return ["artifacts/stage2_framing.json", "artifacts/stage5_claims.json", "stage5-decision.md", "stage5-evidence.md",
+            "outputs/ra/summary.csv"]
+
+
+def freeze_inputs(root, review, rels):
+    """Frozen copies of exactly what the outside reviewer sees, at artifacts/outside_review/<OR>/inputs/<original path>."""
+    out = []
+    for rel in rels:
+        dst = f"artifacts/outside_review/{review}/inputs/{rel}"
+        os.makedirs(os.path.dirname(os.path.join(root, dst)), exist_ok=True)
+        shutil.copyfile(os.path.join(root, rel), os.path.join(root, dst))
+        out.append(dst)
+    return out
+
+
+def or_packet_text(root, review, pid, inputs, rules="do not write code; do not vote; advisory only; answer in the reply",
+                   not_allowed=None, stage=None, role="Outside Reviewer"):
+    stage = stage or ("2" if review == "OR1" else "5")
+    not_allowed = not_allowed or ("answer key; the data (values and structure); other roles' unfrozen work" if review == "OR1"
+                                  else "answer key; raw data; code")
+    task = ("Find any ambiguity or assumption in the proposed locked question and its terms that could change the answer."
+            if review == "OR1" else "Say whether the conclusion follows from the official numbers and whether any claim exceeds the evidence.")
+    lines = [f"  - {x} sha256={sha(os.path.join(root, x))} bytes={os.path.getsize(os.path.join(root, x))}" for x in inputs]
+    return (f"PACKET_ID: {pid}\nROLE: {role}\nSTAGE: {stage}\nTASK: {task}\nINPUTS:\n" + "\n".join(lines) + "\n"
+            f"ALLOWED TO SEE: the listed inputs\nNOT ALLOWED TO SEE: {not_allowed}\nRULES: {rules}\n"
+            f"EXPECTED OUTPUT:\n  - replies/outside/{pid}_reply.md\n"
+            f"REPLY ENDS WITH: ANSWERED {pid} after the numbered issues (severity blocking/minor, proposed fix)\n")
+
+
+def or_reply_text(pid, issues):
+    if not issues:
+        return f"NO ISSUES\n\nANSWERED {pid}\n"
+    body = "".join(f"{n}. [{sev}] {txt}\n   Proposed fix: {fix}\n" for n, (sev, txt, fix, _) in enumerate(issues, 1))
+    return body + f"\nANSWERED {pid}\n"
+
+
+def or_card_text(review, unresolved, skipped=False, issues=None):
+    lines = [f"# Owner card: {review} outside review (ChatGPT)"]
+    if skipped:
+        lines.append(f"- {SKIP} {review}: ChatGPT was usage-limited on the first send and 3 retries; proceeding without it.")
+    for n in unresolved:
+        lines.append(f"- UNRESOLVED BLOCKING {review}-{n}: {(issues or {}).get(n, 'see dispositions')}")
+    if not unresolved and not skipped:
+        lines.append("- UNRESOLVED BLOCKING: none")
+    return "\n".join(lines) + "\n"
+
+
+SKIP = "OR-SKIPPED"
+
+
+def _index_put(root, row):
+    p = os.path.join(root, "artifacts/packets/index.json")
+    idx = rj(root, "artifacts/packets/index.json") if os.path.exists(p) else {
+        "packets": [], "forbidden_strings": ["do-not-ship-marker"], "forbidden_path_prefixes": ["keys/"]}
+    idx["packets"] = [r for r in idx["packets"] if r.get("id") != row["id"]] + [row]
+    wj(root, "artifacts/packets/index.json", idx)
+
+
+def add_outside_review(root, review, status="done", issues=None, dispositions=None, card=None, attempts=None,
+                       packet=None, reply=None, inputs=None, fix_files=None):
+    """A complete OR1/OR2 outside review: frozen inputs, sealed packet, captured reply, dispositions, owner card, record.
+    Any part can be overridden to plant a defect."""
+    pid = f"CASE-{review}-01"
+    if review == "OR1" and not os.path.exists(os.path.join(root, "brief/BRIEF.md")):
+        wt(root, "brief/BRIEF.md", BRIEF)
+    issues = OR_ISSUES[review] if issues is None else issues
+    frozen = freeze_inputs(root, review, or_inputs(review) if inputs is None else inputs)
+    pr = wt(root, f"packets/outside/{pid}.md", packet if packet is not None else or_packet_text(root, review, pid, frozen))
+    row = {"id": pid, "path": pr["path"], "status": "answered" if status == "done" else "skipped", "sha256": pr["sha256"]}
+    rec = {"review": review, "reviewer": "chatgpt", "packet_id": pid, "status": status}
+    unresolved = []
+    if status == "done":
+        rp = wt(root, f"replies/outside/{pid}_reply.md", reply if reply is not None else or_reply_text(pid, issues))
+        row["reply"] = rp
+        default_fix = fix_files or {"OR1": ["docs/stage2/FRAMING_RECORD.md"], "OR2": ["stage5-decision.md"]}[review]
+        rows = []
+        for n, (sev, txt, fix, st) in enumerate(issues, 1):
+            d = {"issue": n, "severity": sev, "status": st, "decided_by": "lead-designer"}
+            if st == "fixed":
+                d.update(where=f"{default_fix[0]}: {fix}", files=[ref(root, f) for f in default_fix])
+            else:
+                d["reason"] = "Out of scope for this question; owner to decide" if sev == "blocking" else "Already covered by the stated metric"
+                if sev == "blocking":
+                    unresolved.append(n)
+            rows.append(d)
+        dp = wj(root, f"artifacts/outside_review/{review}_dispositions.json",
+                {"review": review, "reply": rp, "dispositions": dispositions if dispositions is not None else rows})
+        rec.update(reply=rp, dispositions=dp)
+        rec["attempts"] = attempts or [{"at": "2026-11-10T10:00:00-06:00", "outcome": "answered"}]
+    else:
+        rec["attempts"] = attempts or [{"at": f"2026-11-10T10:{m:02d}:00-06:00", "outcome": "usage_limit"} for m in (0, 5, 10, 15)]
+        rec["skip_log"] = f"{SKIP} {review}: usage limit on the first send and 3 retries"
+    texts = {n: t for n, (_, t, _, _) in enumerate(issues, 1)}
+    rec["card"] = wt(root, OR_CARD[review], card if card is not None else or_card_text(review, unresolved, status == "skipped", texts))
+    _index_put(root, row)
+    wj(root, f"artifacts/outside_review/{review}.json", rec)
+    return rec
+
+
+def approve_question(root, text="Approved: locked question as listed, with the OR1 card"):
+    return wj(root, "artifacts/stage2_owner_question_approval.json", {
+        "framing_sha256": sha(os.path.join(root, "artifacts/stage2_framing.json")),
+        "or1_card_sha256": sha(os.path.join(root, OR_CARD["OR1"])), "approval_text": text,
+        "approval_timestamp": "2026-11-09T11:00:00-06:00"})

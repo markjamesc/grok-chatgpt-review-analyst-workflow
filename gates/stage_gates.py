@@ -1,4 +1,5 @@
-"""Grok workflow gates G1, G2, G2F, G3S, G3K, G3, G4a, G4b, G4c, G4d, G5, G6 (docs/gates.md). G0 is in gates/packet.py.
+"""Grok workflow gates G1, G2, G2F, G3S, G3K, G3, G4a, G4b, G4c, G4d, G5, G6 (docs/gates.md). G0 is in gates/packet.py;
+the Version 3 outside-review gates G2R and G5R are in gates/outside_review.py.
 
 Never weaker than the R referee: G1, G2 and G3 include every check the R procedure gate runs when it completes the
 matching stage (validate_stage_receipt + methodology operations ledger + evidence closure, ported in gates/procedure.py
@@ -589,11 +590,14 @@ def g5(root):
 
 
 # ------------------------------------------------------------------------------------------------ G6 certificate
-CHAIN = ("G0",) + LOWER + ("G4d", "G5")
-DEPS = {"G2": ("G1",), "G2F": ("G2",), "G3S": ("G2F",), "G3K": ("G2F",), "G3": ("G3S", "G3K"), "G4a": ("G3",), "G4b": ("G4a",),
-        "G4c": ("G4b",), "G4d": ("G4c",), "G5": ("G4d",)}
+# Version 3: the outside reviews G2R (OR1, after G2) and G5R (OR2, after G5) are part of the chain; G2F follows G2R.
+CHAIN = ("G0",) + LOWER[:2] + ("G2R",) + LOWER[2:] + ("G4d", "G5", "G5R")
+DEPS = {"G2": ("G1",), "G2R": ("G2",), "G2F": ("G2R",), "G3S": ("G2F",), "G3K": ("G2F",), "G3": ("G3S", "G3K"), "G4a": ("G3",), "G4b": ("G4a",),
+        "G4c": ("G4b",), "G4d": ("G4c",), "G5": ("G4d",), "G5R": ("G5",)}
 R_CERT = "artifacts/final_certificate.json"
 FINISH_APPROVAL = "artifacts/stage5_owner_approval.json"
+QUESTION_APPROVAL = "artifacts/stage2_owner_question_approval.json"
+OR_RECORDS = {"OR1": ("G2R", "artifacts/outside_review/OR1.json"), "OR2": ("G5R", "artifacts/outside_review/OR2.json")}
 R_STEPS = ("start", "framing", "design", "execution", "finish")
 
 
@@ -626,6 +630,25 @@ def g6(root):
     g.add("All stages in order", len(recs) == len(CHAIN) and not late,
           "each gate ran after the gates it depends on" + (f"; out of order: {late}" if late else ""))
     repair.cap_checks(g)
+    # Version 3: OR1 and OR2 done or logged as skipped; skipped packets only those; owner saw each card
+    cards, or_skipped = {}, []
+    for review, (gid, rel) in OR_RECORDS.items():
+        orx = (recs.get(gid) or {}).get("outside_review") or {}
+        g.add(f"{review} outside review done or logged as skipped", gid in recs and orx.get("review") == review
+              and orx.get("status") in ("done", "skipped"), f"{gid} must be PASS and current with status done or skipped")
+        if orx.get("status") == "skipped":
+            or_skipped.append(orx.get("packet_id"))
+        orrec = _plain(rel, g) or {}
+        g.use(rel)
+        cards[review] = (orrec.get("card") or {}).get("sha256") if isinstance(orrec.get("card"), dict) else None
+    sk = g0.get("skipped") if isinstance(g0.get("skipped"), list) else []
+    g.add("Skipped packets are logged outside reviews", sorted(map(str, sk)) == sorted(map(str, or_skipped)),
+          f"G0 skipped {sk}; G2R/G5R logged skipped {or_skipped}")
+    qa = g.load(QUESTION_APPROVAL, "Owner question approval") or {}
+    g.add("Owner approved the locked question with the OR1 card", approval_ok(qa) and cards.get("OR1") is not None
+          and str(qa.get("or1_card_sha256", "")).lower() == str(cards["OR1"]).lower()
+          and str(qa.get("framing_sha256", "")).lower() == str(ref_of(root, R_STEP["G2"][1])["sha256"]).lower(),
+          "stage2_owner_question_approval.json framing_sha256 = current framing; or1_card_sha256 = the OR1 card the owner saw")
     # owner approval of the exact finish package
     c = _plain(CLAIMS, g)
     g.use(CLAIMS)
@@ -638,6 +661,9 @@ def g6(root):
           and str(ap.get("claims_sha256", "")).lower() == cur_claims and bool(adl) and adl == cdl
           and all(ref_current(root, {"path": k, "sha256": v}) for k, v in adl.items()),
           "stage5_owner_approval.json claims_sha256 and deliverables must equal the current claims ledger and files")
+    g.add("Owner finish approval names the OR2 card", cards.get("OR2") is not None
+          and str(ap.get("or2_card_sha256", "")).lower() == str(cards["OR2"]).lower(),
+          "stage5_owner_approval.json or2_card_sha256 = the OR2 card shown on the finish card")
     # R Procedure Gate certificate, and every hash it recorded still current
     cert = g.load(R_CERT, "R final certificate") or {}
     g.add("R certificate PASS", cert.get("result") == PASS and cert.get("certified") is True
@@ -666,6 +692,8 @@ def g6(root):
           and fc.get("sha256") == ref_of(root, R_CERT)["sha256"], "run_state status CERTIFIED and final_certificate hash current")
     g.extra["certificate"] = {"certificate": "grok_five_stage_gate_certificate", "gates": refs, "r_certificate": ref_of(root, R_CERT),
                               "claims": ref_of(root, CLAIMS), "owner_finish_approval": ref_of(root, FINISH_APPROVAL),
+                              "owner_question_approval": ref_of(root, QUESTION_APPROVAL),
+                              "outside_reviews": {k: ref_of(root, v[1]) for k, v in OR_RECORDS.items()},
                               "note": "Recorded gate checks and approvals; not a proof of correctness or AI independence."}
     return g.result()
 

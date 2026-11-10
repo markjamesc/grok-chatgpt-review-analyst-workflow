@@ -3,7 +3,8 @@
 Analysis stays in R. Only the gates and checks are Python (standard library only; no pandas or pyyaml needed).
 Every gate returns **PASS**, **FAIL** or **TOOL_ERROR**. An unrun gate is not PASS, and a gate with missing input never PASSes.
 
-**Status (2026-11-10).** Every gate below is implemented and tested. Tested means: covered by `gates/tests` (good path
+**Status (2026-11-10, Version 3).** Every gate below is implemented and tested, including the Version 3 outside-review
+gates G2R and G5R. Tested means: covered by `gates/tests` (good path
 plus planted-defect fault injection) and, where an R gate exists, by R-vs-Python parity on the R repo's own test suites
 and on the gate fixtures.
 
@@ -12,6 +13,7 @@ and on the gate fixtures.
 | G0 Packet integrity | Implemented, tested | `packet.g0` | none (no R counterpart: the R gate has no packet format) | good path + 17 faults |
 | G1 Decision | Implemented, tested | `stage_gates.g1` | R `complete start` checks (validate_stage_receipt + operations ledger + closure) | good path + 5 faults |
 | G2 Question lock | Implemented, tested | `stage_gates.g2` | R `complete framing` checks | good path + 6 faults |
+| G2R OR1 outside review (Version 3) | Implemented, tested | `outside_review.g2r`, `or_format` | none (no R counterpart: the R gate has no outside review) | good path + planted defects in `test_outside_review.py` |
 | G2F Feasibility | Implemented, tested | `stage_gates.g2f` | none (no R equivalent) | good path + 6 faults |
 | G3S SQL source-gate runner | Implemented, tested (sqlite engine only) | `stage_gates.g3s`, `sql_select_only` | none (no R equivalent) | good path + 6 faults + authorizer + TOOL_ERROR |
 | G3K Early key/count checks | Implemented, tested | `stage_gates.g3k`, `repair` | none (no R equivalent) | good path + 4 faults + 3 repair-cap tests |
@@ -21,6 +23,7 @@ and on the gate fixtures.
 | G4c Post-reconciliation review | Implemented, tested | `stage_gates.g4c` | none (no R equivalent) | good path + 3 faults |
 | G4d Release | Implemented, tested | `stage_gates.g4d` | R `complete execution` checks + the whole ported R Workflow Gate | good path + 6 faults + R-report kept |
 | G5 Claims | Implemented, tested | `stage_gates.g5` | R `complete finish` checks (validate_stage_receipt incl. m_finish claim ledger and m_ai, operations ledger, closure) | good path + 12 faults; R stage-check parity |
+| G5R OR2 outside review (Version 3) | Implemented, tested | `outside_review.g5r`, `or_format` | none (no R counterpart) | good path + skip path + planted defects in `test_outside_review.py` |
 | G6 Certificate | Implemented, tested | `stage_gates.g6` | requires the R `finalize` certificate (ported in `procedure.py`) and re-checks every hash it recorded | good path + 10 faults; R vs Python `finalize` verdict parity |
 | GP Assembly regression | Implemented, tested | `gp_assembly`, `assembly` | none | 16 assembly + 6 GP tests |
 | Repair cap (3, then ESCALATE) | Implemented, tested | `repair` | — | in G3K/G4d tests |
@@ -54,9 +57,10 @@ input still has the recorded hash** ("PASS by hash").
 | G4a/G4b | `artifacts/stage4/outputs.json` {outputs {ra, rb, sql: {name: {path, sha256}}}, fixtures {ra, rb, sql: {fixture_id: {path, sha256}}}} |
 | G4c | `artifacts/stage4/reviews/risk_reviewer_g4c.json` covering the current G4b record and every reconciled output |
 | G4d | every lower gate record; `artifacts/repairs.json`; R `artifacts/stage4_validation_status.json` and Stage 4 evidence (the ported Workflow Gate). If R `artifacts/procedure/run_state.json` records a Workflow Gate report, G4d does not overwrite it and requires it unchanged |
-| G0 | `artifacts/packets/index.json` {packets[{id, path, status draft/sent/answered, sha256 (once sent), reply {path, sha256} (once answered)}], forbidden_strings?, forbidden_path_prefixes? (`private/` always applies)}; each packet in the [handoff format](../docs/handoff.md); each reply ends with `PRODUCED FILES:` + `- <path>` lines, then `ANSWERED <PACKET_ID>` |
+| G0 | `artifacts/packets/index.json` {packets[{id, path, status draft/sent/answered/skipped (skipped: outside review only), sha256 (once sent), reply {path, sha256} (once answered)}], forbidden_strings?, forbidden_path_prefixes? (`private/` always applies)}; each packet in the [handoff format](../docs/handoff.md); each reply ends with `PRODUCED FILES:` + `- <path>` lines, then `ANSWERED <PACKET_ID>` |
 | G5 | R `artifacts/stage5_interpretation_status.json`; `artifacts/stage5_claims.json` {deliverables[{path, sha256}], claims[{id, type, deliverable, quote, evidence[{path, sha256}], derived?[{value, basis}]}]}; reviews `artifacts/stage5/reviews/{second_designer_inference, risk_reviewer_numbers}.json`; current G4d record |
-| G6 | every gate record G0–G5; `artifacts/stage5_owner_approval.json` {claims_sha256, deliverables[{path, sha256}], approval_text, approval_timestamp}; R `artifacts/final_certificate.json` and `artifacts/procedure/run_state.json`; writes `artifacts/gates/G6.json` (the Grok certificate) |
+| G6 | every gate record G0–G5, G2R, G5R; `artifacts/stage2_owner_question_approval.json`; `artifacts/outside_review/OR1.json`, `OR2.json`; `artifacts/stage5_owner_approval.json` {claims_sha256, deliverables[{path, sha256}], or2_card_sha256, approval_text, approval_timestamp}; R `artifacts/final_certificate.json` and `artifacts/procedure/run_state.json`; writes `artifacts/gates/G6.json` (the Grok certificate) |
+| G2R / G5R | `artifacts/outside_review/<OR>.json` {review, reviewer chatgpt, packet_id, status done/skipped, attempts[{at, outcome answered/usage_limit}], reply, dispositions, card, skip_log}; the OR packet and reply in the packet index; frozen inputs under `artifacts/outside_review/<OR>/inputs/`; `<OR>_dispositions.json`; `<OR>_card.md`; current G2 (OR1) or G5 (OR2) record. See [../docs/outside-review.md](../docs/outside-review.md) |
 | GP | `artifacts/assembly/index.json` {assemblies[{split}]}; split specs, replies, part files, outputs and transform logs |
 
 A review record is {role, subjects[{path, sha256}], findings[{id, class must_fix|advisory, status open|closed}]}. It counts
@@ -73,7 +77,19 @@ only if every current subject is listed at the same path with the current hash; 
 - **G5:** sealed evidence means an input of a current PASS gate record G1–G4d, or that record itself. Every number in a
   claim quote must appear in that claim's evidence or be declared under `derived` with its basis (for the Risk
   Reviewer's recomputation). Claim types must sit within the locked design's `allowed_claim_types`.
-- **G6:** each gate ran after the gates it depends on (record timestamps); every lower record is PASS by hash; the
+- **G2R / G5R (Version 3):** base gate (G2 / G5) PASS and current; the OR packet passes every G0 packet check, is
+  addressed to `outside-reviewer` at the right stage, states `do not write code` and `do not vote`, and lists only frozen
+  copies; OR1 has the brief and framing and no data, data structure or code; OR2 has the locked question, one claims
+  ledger, at least one of its deliverables and only evidence its claims cite, with the ledger's hashes. Done: answered
+  within 3 retries (5+ min apart); the reply is the one sealed in the index, ends with ANSWERED, issues well-formed,
+  no code; one disposition per issue with the reply's severity; `fixed` gives where and files sealed by the current
+  base gate; `not_fixed` gives a reason; decided by a Grok role. Skipped: first send + 3 retries, all usage-limited,
+  5+ min apart, `OR-SKIPPED` logged. The owner card lists exactly the unresolved blocking issues (or says none) and
+  shows `OR-SKIPPED` when skipped. ChatGPT's opinion is never a gate verdict.
+- **G6:** each gate ran after the gates it depends on (record timestamps; G2R after G2, G2F after G2R, G5R after G5); G2R
+  and G5R done or skipped; G0's skipped packets are exactly the logged skips; `stage2_owner_question_approval.json`
+  {framing_sha256, or1_card_sha256, approval_text, approval_timestamp} and `or2_card_sha256` in the finish approval
+  name the cards the owner saw; every lower record is PASS by hash; the
   owner approved the exact claims ledger and deliverable hashes; the R certificate is PASS and certified, and its
   completed-stage artifacts, deliverables, evidence inventory and Workflow Gate report hashes are still current.
 
@@ -109,7 +125,7 @@ error messages differs (verdicts and check lists are identical).
 
 ## Production note
 
-Run order at the end of a run: R `complete execution` → G4d → G5 → owner approval of the exact finish package →
+Run order at the end of a run: R `complete execution` → G4d → (OR2 on the draft finish, dispositions, re-reviews) → G5 → G5R → owner approval of the exact finish package →
 R `complete finish` and `finalize` → G0 (final) → G6. G4d never overwrites a report the R Procedure Gate recorded.
 PASS by hash is one level deep: a gate record stays current while its own recorded inputs are unchanged, so G6
 re-checks every lower record directly.

@@ -22,7 +22,7 @@ from gates import stage_gates as SG
 from gates.run import run_gate
 from gates.tests import fixture_project as F
 
-ORDER = ["G1", "G2", "G2F", "G3S", "G3K", "G3", "G4a", "G4b", "G4c", "G4d", "G5", "G0", "G6"]
+ORDER = ["G1", "G2", "G2R", "G2F", "G3S", "G3K", "G3", "G4a", "G4b", "G4c", "G4d", "G5", "G5R", "G0", "G6"]
 PKG = F.PKG
 
 
@@ -42,6 +42,35 @@ def py_stage_checks(rec):
     return [{"check": c["check"][3:], "result": c["result"]} for c in rec["checks"] if c["check"].startswith("R: ")]
 
 
+def build_base(base, pin):
+    """R-certified project plus every Grok gate input (Version 3: OR1 and OR2 included); runs every gate in ORDER."""
+    F.build_r_certified_project(base)
+    F.add_stage2(base, pin)
+    F.add_feasibility(base)
+    F.add_stage3(base)
+    F.add_stage4_outputs(base)
+    with open(os.path.join(base, SG.WG_REPORT), "rb") as fh:
+        r_report = fh.read()
+    records = {}
+    for g in ORDER:
+        if g == "G2R":
+            F.add_outside_review(base, "OR1")
+        if g == "G2F":
+            F.approve_question(base)
+        if g == "G4c":
+            F.add_g4c_review(base)
+        if g == "G5":
+            F.add_stage5(base)
+        if g == "G5R":
+            F.add_outside_review(base, "OR2")
+        if g == "G0":
+            F.add_packets(base)
+        if g == "G6":
+            F.approve_finish(base)
+        records[g] = run_gate(g, base)
+    return records, r_report
+
+
 @unittest.skipUnless(F.r_available(), "Rscript and the R repo (GATES_R_REPO) are needed to build an R-certified project")
 class FinishGates(unittest.TestCase):
     @classmethod
@@ -49,24 +78,7 @@ class FinishGates(unittest.TestCase):
         cls.tmp = tempfile.mkdtemp(prefix="grok-finish-")
         cls.base = os.path.join(cls.tmp, "base")
         cls.pin = os.path.join(cls.tmp, "pin")
-        F.build_r_certified_project(cls.base)
-        F.add_stage2(cls.base, cls.pin)
-        F.add_feasibility(cls.base)
-        F.add_stage3(cls.base)
-        F.add_stage4_outputs(cls.base)
-        with open(os.path.join(cls.base, SG.WG_REPORT), "rb") as fh:
-            cls.r_report = fh.read()
-        cls.records = {}
-        for g in ORDER:
-            if g == "G4c":
-                F.add_g4c_review(cls.base)
-            if g == "G5":
-                F.add_stage5(cls.base)
-            if g == "G0":
-                F.add_packets(cls.base)
-            if g == "G6":
-                F.approve_finish(cls.base)
-            cls.records[g] = run_gate(g, cls.base)
+        cls.records, cls.r_report = build_base(cls.base, cls.pin)
         cls.n = 0
 
     @classmethod

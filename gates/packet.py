@@ -19,6 +19,14 @@ Checks every packet in the index:
 - an answered packet has a sealed reply whose produced-files list is not blank, lists every EXPECTED OUTPUT path,
   names only existing files, and whose last non-empty line is `ANSWERED <PACKET_ID>`. A file that appears on disk
   is not a completed send: without that reply the packet stays unanswered (reported in `unanswered`; G6 refuses it).
+
+Version 3 (ChatGPT outside review, docs/outside-review.md): ROLE `outside-reviewer` packets (OR1 at Stage 2, OR2 at
+Stage 5) use the outside-review reply contract instead of a produced-files list. REPLY ENDS WITH must require
+`ANSWERED <PACKET_ID>` and numbered issues; EXPECTED OUTPUT names exactly one path, where the parent captures the
+reply verbatim; an answered reply is sealed at that path, ends with `ANSWERED <PACKET_ID>`, contains no code block, and
+every numbered issue has a severity (blocking/minor) and a proposed fix (or the reply says NO ISSUES). Status
+`skipped` (usage limit after the retries, logged OR-SKIPPED) is allowed only for an outside-review packet; skipped
+packets are reported in `skipped`, and G6 accepts them only if G2R/G5R logged that review as skipped.
 """
 from __future__ import annotations
 
@@ -26,15 +34,16 @@ import os
 import re
 
 from gates.common import Gate, PLACEHOLDER_RE, ref_current, safe_rel, sha256_file, text
+from gates.or_format import OUTSIDE_ROLE, has_code, parse_issues
 
 INDEX = "artifacts/packets/index.json"
 FIELDS = ["PACKET_ID", "ROLE", "STAGE", "TASK", "INPUTS", "ALLOWED TO SEE", "NOT ALLOWED TO SEE", "RULES",
           "EXPECTED OUTPUT", "REPLY ENDS WITH"]
 OPTIONAL = ["SUPERSEDES"]
 STAGES = {"1", "2", "2F", "3", "4", "5"}
-ROLES = {"lead-designer", "second-designer", "risk-reviewer", "sql-analyst", "analyst-r-a", "analyst-r-b"}
+ROLES = {"lead-designer", "second-designer", "risk-reviewer", "sql-analyst", "analyst-r-a", "analyst-r-b", OUTSIDE_ROLE}
 DEFAULT_FORBIDDEN_PREFIXES = ["private/"]
-STATUSES = ("draft", "sent", "answered")
+STATUSES = ("draft", "sent", "answered", "skipped")
 
 FIELD_RE = re.compile(r"^(" + "|".join(re.escape(f) for f in sorted(FIELDS + OPTIONAL, key=len, reverse=True)) + r"):[ \t]*(.*)$")
 INPUT_RE = re.compile(r"^\s*-\s+(?P<path>\S+)\s+sha256=(?P<sha>[0-9A-Fa-f]{64})\s+bytes=(?P<bytes>[0-9]+)"
@@ -103,13 +112,16 @@ def g0(root):
     fs = [s for s in fs if text(s)] if isinstance(fs, list) else []
     fp = idx.get("forbidden_path_prefixes", [])
     fp = DEFAULT_FORBIDDEN_PREFIXES + ([s for s in fp if text(s)] if isinstance(fp, list) else [])
-    unanswered = []
+    unanswered, skipped = [], []
     for p in pk:
         if isinstance(p, dict):
             _check_packet(g, root, p, set(ids), fs, fp)
-            if p.get("status") != "answered":
+            if p.get("status") == "skipped":
+                skipped.append(p.get("id"))
+            elif p.get("status") != "answered":
                 unanswered.append(p.get("id"))
     g.extra["unanswered"] = unanswered
+    g.extra["skipped"] = skipped
     return g.result()
 
 
@@ -124,7 +136,7 @@ def _check_packet(g, root, p, all_ids, forbidden_strings, forbidden_prefixes):
         g.add(f"{lab} file present", False, f"{rel!r}: safe, existing, non-empty project path required")
         return
     g.use(rel)
-    if status in ("sent", "answered"):
+    if status in ("sent", "answered", "skipped"):
         g.add(f"{lab} sealed hash current", ref_current(root, {"path": rel, "sha256": p.get("sha256")}),
               "a sent packet is sealed: its recorded sha256 must equal the current bytes")
     try:
@@ -137,7 +149,11 @@ def _check_packet(g, root, p, all_ids, forbidden_strings, forbidden_prefixes):
     g.add(f"{lab} header fields", not missing, f"missing or empty: {missing}" if missing else "all present")
     g.add(f"{lab} PACKET_ID matches index", (f.get("PACKET_ID") or [""])[0].strip() == pid, f"PACKET_ID must equal {pid!r}")
     g.add(f"{lab} STAGE known", (f.get("STAGE") or [""])[0].strip().upper() in STAGES, f"STAGE in {sorted(STAGES)}")
-    g.add(f"{lab} ROLE known", _norm_role((f.get("ROLE") or [""])[0]) in ROLES, f"ROLE in {sorted(ROLES)}")
+    role = _norm_role((f.get("ROLE") or [""])[0])
+    g.add(f"{lab} ROLE known", role in ROLES, f"ROLE in {sorted(ROLES)}")
+    outside = role == OUTSIDE_ROLE
+    if status == "skipped":
+        g.add(f"{lab} skipped only for an outside review", outside, "status skipped is allowed only for ROLE outside-reviewer")
     # inputs: whole, current, safe, not forbidden
     in_lines = f.get("INPUTS") or []
     bad_lines, stale, forbidden, parts = [], [], [], {}
@@ -174,17 +190,25 @@ def _check_packet(g, root, p, all_ids, forbidden_strings, forbidden_prefixes):
     g.add(f"{lab} no forbidden strings", not fhits, f"{len(fhits)} forbidden string(s) present" if fhits else "none")
     # reply contract
     rew = " ".join(f.get("REPLY ENDS WITH") or [])
-    g.add(f"{lab} reply contract", f"ANSWERED {pid}" in rew and "produced files" in rew.lower(),
-          f"REPLY ENDS WITH must require `ANSWERED {pid}` and a list of produced files")
     expected = _list_paths(f.get("EXPECTED OUTPUT") or [])
-    g.add(f"{lab} expected outputs named", bool(expected) and all(safe_rel(root, x) for x in expected),
-          "EXPECTED OUTPUT: one `- <project path>` line per output")
+    if outside:
+        g.add(f"{lab} reply contract", f"ANSWERED {pid}" in rew and "numbered issues" in rew.lower(),
+              f"REPLY ENDS WITH must require `ANSWERED {pid}` and numbered issues (outside review)")
+        g.add(f"{lab} expected outputs named", len(expected) == 1 and all(safe_rel(root, x) for x in expected),
+              "EXPECTED OUTPUT: exactly one `- <project path>`, where the parent captures the outside reply")
+    else:
+        g.add(f"{lab} reply contract", f"ANSWERED {pid}" in rew and "produced files" in rew.lower(),
+              f"REPLY ENDS WITH must require `ANSWERED {pid}` and a list of produced files")
+        g.add(f"{lab} expected outputs named", bool(expected) and all(safe_rel(root, x) for x in expected),
+              "EXPECTED OUTPUT: one `- <project path>` line per output")
     vm = VERSION_RE.search(pid or "")
     if vm and int(vm.group(1)) >= 2:
         sup = (f.get("SUPERSEDES") or [""])[0].strip()
         g.add(f"{lab} names what it supersedes", text(sup) and sup in all_ids and sup != pid, "SUPERSEDES: <earlier packet id in the index>")
     if status == "answered":
-        _check_reply(g, root, p, pid, lab, expected)
+        (_check_outside_reply if outside else _check_reply)(g, root, p, pid, lab, expected)
+    if status == "skipped":
+        g.add(f"{lab} skipped packet has no reply", p.get("reply") is None, "a skipped outside review has no captured reply")
 
 
 def _check_reply(g, root, p, pid, lab, expected):
@@ -209,3 +233,25 @@ def _check_reply(g, root, p, pid, lab, expected):
     for x in produced:
         if not absent and safe_rel(root, x):
             g.use(x)
+
+
+def _check_outside_reply(g, root, p, pid, lab, expected):
+    """Outside-review reply (OR1/OR2): captured verbatim by the parent at the single EXPECTED OUTPUT path."""
+    r = p.get("reply")
+    ok = ref_current(root, r)
+    g.add(f"{lab} reply sealed", ok, "reply {path, sha256} current (captured and sealed by the parent)")
+    if not ok:
+        return
+    g.use(r["path"])
+    g.add(f"{lab} reply captured at the expected output", [r["path"]] == expected, f"reply path must equal EXPECTED OUTPUT {expected}")
+    try:
+        body = _read(safe_rel(root, r["path"]))
+    except UnicodeDecodeError:
+        g.add(f"{lab} reply is UTF-8 text", False, r["path"])
+        return
+    last = next((x.strip() for x in reversed(body.splitlines()) if x.strip()), "")
+    g.add(f"{lab} reply ends with ANSWERED", last == f"ANSWERED {pid}", f"last non-empty line must be `ANSWERED {pid}`; got {last[:80]!r}")
+    _, errs = parse_issues(body)
+    g.add(f"{lab} outside-review issues well-formed", not errs,
+          "numbered issues, each `[blocking]` or `[minor]` with a `Proposed fix:`, or `NO ISSUES`" + (f"; {errs}" if errs else ""))
+    g.add(f"{lab} outside reviewer wrote no code", not has_code(body), "the outside reviewer never writes code (no fenced code block)")
