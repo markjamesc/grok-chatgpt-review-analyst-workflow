@@ -15,6 +15,10 @@ the evidence at the two highest-stakes points of a run. See [../outside-review.m
   answer. You will not get the data or its structure; do not ask for it.
 - OR2: say whether the conclusion follows from the official numbers in the packet, and whether any claim exceeds the
   evidence. Do not recompute from data you were not given.
+- Labeled descriptive rates and differences (each group's rate and the gap in points) are allowed and expected when the
+  question compares groups. Raise an issue if one is presented as causal, or if it is missing; never ask for all rates to be removed.
+- Before you raise a missing definition or mapping, check whether the brief, terms or other files in the packet already
+  settle it. If they do, it is not blocking; say where it is settled.
 - Reply with a numbered list. Each item starts `[blocking]` (could change the answer or decision) or `[minor]`, and has
   a line `Proposed fix: ...`. If you find nothing, write `NO ISSUES`.
 - Make the last line of your reply `ANSWERED <PACKET_ID>`.

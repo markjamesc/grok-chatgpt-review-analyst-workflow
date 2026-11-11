@@ -11,6 +11,7 @@ and on the gate fixtures.
 | ID | Status | Module | R checks inside (parity-tested port) | Tests |
 |---|---|---|---|---|
 | G0 Packet integrity | Implemented, tested | `packet.g0` | none (no R counterpart: the R gate has no packet format) | good path + 17 faults |
+| GD Public-file derivability | Implemented, tested | `derivability.gd` (also run inside G0) | none (no R counterpart) | Case-C-style regression + 2 faults + nothing-raised path |
 | G1 Decision | Implemented, tested | `stage_gates.g1` | R `complete start` checks (validate_stage_receipt + operations ledger + closure) | good path + 5 faults |
 | G2 Question lock | Implemented, tested | `stage_gates.g2` | R `complete framing` checks | good path + 6 faults |
 | G2R OR1 outside review (Version 3) | Implemented, tested | `outside_review.g2r`, `or_format` | none (no R counterpart: the R gate has no outside review) | good path + planted defects in `test_outside_review.py` |
@@ -57,7 +58,8 @@ input still has the recorded hash** ("PASS by hash").
 | G4a/G4b | `artifacts/stage4/outputs.json` {outputs {ra, rb, sql: {name: {path, sha256}}}, fixtures {ra, rb, sql: {fixture_id: {path, sha256}}}} |
 | G4c | `artifacts/stage4/reviews/risk_reviewer_g4c.json` covering the current G4b record and every reconciled output |
 | G4d | every lower gate record; `artifacts/repairs.json`; R `artifacts/stage4_validation_status.json` and Stage 4 evidence (the ported Workflow Gate). If R `artifacts/procedure/run_state.json` records a Workflow Gate report, G4d does not overwrite it and requires it unchanged |
-| G0 | `artifacts/packets/index.json` {packets[{id, path, status draft/sent/answered/skipped (skipped: outside review only), sha256 (once sent), reply {path, sha256} (once answered)}], forbidden_strings?, forbidden_path_prefixes? (`private/` always applies)}; each packet in the [handoff format](../docs/handoff.md); each reply ends with `PRODUCED FILES:` + `- <path>` lines, then `ANSWERED <PACKET_ID>` |
+| GD | `artifacts/derivability.json` {public_sources[{path, sha256}], items[{id, stage, raised_in, item, search_terms, derivable, derivation + derived_from + resolution `continued` (derivable) or not_derivable_reason + escalated_at + resolution `escalated_to_owner` + term_hits_reviewed[{path, why_not_derivable}] (not derivable)}]}; the `MISSING INPUT:` lines of sealed replies in the packet index. See `gates/derivability.py` |
+| G0 | `artifacts/packets/index.json` {packets[{id, path, status draft/sent/answered/skipped (skipped: outside review only), sha256 (once sent), reply {path, sha256} (once answered), superseded_by?, superseded_reason?, superseded_at?}], forbidden_strings?, forbidden_path_prefixes? (`private/` always applies)}; each packet in the [handoff format](../docs/handoff.md); each reply ends with `PRODUCED FILES:` + `- <path>` lines, then `ANSWERED <PACKET_ID>` |
 | G5 | R `artifacts/stage5_interpretation_status.json`; `artifacts/stage5_claims.json` {deliverables[{path, sha256}], claims[{id, type, deliverable, quote, evidence[{path, sha256}], derived?[{value, basis}]}]}; reviews `artifacts/stage5/reviews/{second_designer_inference, risk_reviewer_numbers}.json`; current G4d record |
 | G6 | every gate record G0–G5, G2R, G5R; `artifacts/stage2_owner_question_approval.json`; `artifacts/outside_review/OR1.json`, `OR2.json`; `artifacts/stage5_owner_approval.json` {claims_sha256, deliverables[{path, sha256}], or2_card_sha256, approval_text, approval_timestamp}; R `artifacts/final_certificate.json` and `artifacts/procedure/run_state.json`; writes `artifacts/gates/G6.json` (the Grok certificate) |
 | G2R / G5R | `artifacts/outside_review/<OR>.json` {review, reviewer chatgpt, packet_id, status done/skipped, attempts[{at, outcome answered/usage_limit}], reply, dispositions, card, skip_log}; the OR packet and reply in the packet index; frozen inputs under `artifacts/outside_review/<OR>/inputs/`; `<OR>_dispositions.json`; `<OR>_card.md`; current G2 (OR1) or G5 (OR2) record. See [../docs/outside-review.md](../docs/outside-review.md) |
@@ -73,10 +75,21 @@ only if every current subject is listed at the same path with the current hash; 
   declared forbidden prefix, and no answer-key file. No `TEMPLATE`, `{{placeholder}}` or handoff-format `<...>`
   placeholder. A `-vN` correction (N >= 2) names what it SUPERSEDES. An answered packet has a sealed reply ending
   `ANSWERED <PACKET_ID>` with a non-blank produced-files list covering every EXPECTED OUTPUT; a file on disk alone
-  leaves the packet unanswered, and G6 refuses unanswered packets.
+  leaves the packet unanswered, and G6 refuses unanswered packets. A row marked `superseded_by` (a packet in the index,
+  no cycle) with `superseded_reason` and an ISO `superseded_at` keeps its sealed hash but is not content-checked or
+  counted (reported in `superseded`). No input may be a template `*.example.json` or a JSON file holding placeholder
+  references (all-zero or `NOT_SET` hashes), followed through referenced JSON files (`gates/guards.py`). Every
+  `MISSING INPUT:` line in a sealed reply must pass the GD derivability checks.
+- **GD:** a stop on a missing input or mapping counts only after a check of the public files: public sources current
+  and not private or an answer key; a derivable item records its derivation and `derived_from` and continues; a
+  non-derivable item is escalated to the owner with a reason and time, and explains each public file that mentions one
+  of its search terms. Otherwise it is treated as derivable.
+- **G3 (design lock):** no template placeholder reference in the design files, their review subjects, or JSON files
+  they reference (the R `finalize` evidence closure would fail on them later), and no blanket ban on descriptive rates.
 - **G5:** sealed evidence means an input of a current PASS gate record G1–G4d, or that record itself. Every number in a
   claim quote must appear in that claim's evidence or be declared under `derived` with its basis (for the Risk
-  Reviewer's recomputation). Claim types must sit within the locked design's `allowed_claim_types`.
+  Reviewer's recomputation). Claim types must sit within the locked design's `allowed_claim_types`. A claim whose quote
+  states a rate or difference (`%`, percent, points) is descriptive or associational and says so in `label` or the quote.
 - **G2R / G5R (Version 3):** base gate (G2 / G5) PASS and current; the OR packet passes every G0 packet check, is
   addressed to `outside-reviewer` at the right stage, states `do not write code` and `do not vote`, and lists only frozen
   copies; OR1 has the brief and framing and no data, data structure or code; OR2 has the locked question, one claims

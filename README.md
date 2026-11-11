@@ -75,6 +75,9 @@ These are design requirements for this draft. Items 1, 8 and 9 have Python gate 
 - **No writes to live systems** without owner approval. Default execution uses frozen, hashed extracts or an owner-approved read-only source.
 - **Review coverage.** A required review counts only if that role received every current subject whole, at the same project path, with the current hash.
 - **A recorded split is not a guarantee of independent errors.**
+- **Check public files before stopping.** A missing input or mapping is checked against the public schema, brief and bundle files first; derivable items are recorded and the work continues; only non-derivable items stop and go to the owner (GD, inside G0).
+- **Descriptive rates are allowed and expected**, labeled descriptive or associational, not causal. No blanket "no rates" rule (G3, G5).
+- **No template placeholders in evidence** (G0 at send, G3 at the design lock), and **replaced packets are marked superseded** in the packet index (G0).
 
 ## Run cap (head-to-head test)
 

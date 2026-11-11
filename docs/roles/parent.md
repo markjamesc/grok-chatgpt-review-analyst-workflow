@@ -18,6 +18,10 @@
 - If ChatGPT is usage-limited, retry up to 3 times, 5 minutes apart, logging each attempt; then mark the review skipped, log `OR-SKIPPED`, put it on the owner card and proceed.
 - Never give ChatGPT code, the data, the data structure (OR1) or the key, and never count its view as a vote.
 - Run the published Python gates. Do not substitute manual stand-ins for an implemented gate.
+- **Before accepting any stop on a missing input or mapping**, check the public schema, brief and bundle files yourself and record the result in `artifacts/derivability.json`, then run GD. If the item is derivable, send the child a new `-vN` packet with the derivation and continue; never close a stage as unresolved on it. Escalate to the owner only an item the public files do not settle.
+- List the public schema, brief and bundle files as inputs to every packet that may need them.
+- Never attach a template JSON or any file with placeholder references (all-zero or `NOT_SET` hashes) to a packet or a design. G0 and G3 reject them.
+- When you replace a packet, mark the old index row `superseded_by`, `superseded_reason`, `superseded_at`. Do not edit or reseal it.
 - Decide routine technical matters yourself. Escalate only materially consequential analytical or business changes and genuinely required approvals.
 - Count repair rounds per defect; after 3 on the same defect, stop and escalate.
 - Work only from the packet you receive. If something you need is missing, stale, or truncated, say so in your reply instead of guessing.

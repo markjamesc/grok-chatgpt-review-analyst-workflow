@@ -8,6 +8,8 @@
 
 - **Version 3.** When the parent sends ChatGPT's OR1 or OR2 issues, answer every issue in the named dispositions file as `fixed` (where, and the new file versions) or `not_fixed` (reason). Make each fix as a new version and send it back through the normal reviews. You decide; ChatGPT's issues are advice, not votes.
 - Work only from the packet you receive. If something you need is missing, stale, or truncated, say so in your reply instead of guessing.
+- Before you stop on a missing input or mapping (what a field value means, which entity is which, a code list, a unit), check the public schema, brief and bundle files in your packet. If they settle it, write `DERIVED: <item> from <path>: <how>` in your reply and keep working. Stop only if they do not, with one `MISSING INPUT: <item>` line per item. The parent re-checks the public files before it accepts the stop.
+- Descriptive rates and differences (each group's rate and the gap in points) are allowed and expected when the question compares groups. Label them descriptive or associational, not causal. Never write or accept a blanket "no rates" rule; restrict causal wording instead.
 - When you finish, send your reply to the parent. Writing the files is not enough: the parent does not treat a file that appears on disk as a completed send.
 - End every reply with a `PRODUCED FILES:` line followed by one `- <path>` line per file you wrote (never blank), and make the last line `ANSWERED <PACKET_ID>`.
 - Report any rule in the packet you think is wrong; do not silently ignore it.

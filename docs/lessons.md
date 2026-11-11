@@ -19,3 +19,9 @@ Process lessons from the head-to-head benchmark run (2026-11-10; no case content
 
 Version 3 design lesson (2026-11-10; no case content or answers):
 - L10 | Same-family reviewers can share one reading of an ambiguous term | add a different-family outside review at the question lock and the finish, answered issue by issue, unresolved blocking issues shown to the owner | gates/tests/test_outside_review.py
+
+Process lessons from the second head-to-head case (2026-11-10; no case content or answers):
+- L11 | A run stopped as unresolved on a field-value meaning and an entity mapping that the public schema and brief already gave | check public files before any stop; record the derivation and continue; only non-derivable items stop and go to the owner (GD, inside G0) | test_g0_stop_on_derivable_mapping_is_rejected, test_g0_derivable_item_cannot_stop_and_sources_must_be_public
+- L12 | A design rule banned rates, so the descriptive group comparison was never reported | labeled descriptive rates are allowed and expected; G3 rejects a blanket ban and G5 requires the label | test_g3_blanket_rate_ban_rejected, test_g3_labeled_descriptive_rates_allowed, test_g5_rate_claim_must_be_labeled_descriptive
+- L13 | The design template's placeholder fixtures (all-zero hashes) travelled with Stage 3 and only R `finalize` noticed | G0 rejects template placeholder references in packet inputs; G3 rejects them at the design lock, with a message naming the fix | test_g0_template_json_attached_as_input, test_g3_design_references_template_with_placeholder_fixtures
+- L14 | Packets that failed G0 and were replaced kept blocking G6 because G0 had no supersession | mark a replaced packet `superseded_by` with reason and time; it stays sealed and is no longer counted | test_g0_superseded_packets_no_longer_block_g6, test_g0_supersession_record_must_be_complete, test_g0_superseded_packet_stays_sealed
