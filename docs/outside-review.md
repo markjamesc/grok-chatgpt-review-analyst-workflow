@@ -1,11 +1,31 @@
-# Version 3: ChatGPT outside review (OR1 and OR2)
+# Version 3: Codex outside review (OR1 and OR2)
 
 Version 3 is the Grok Bot team workflow (parent plus six child bots, as in Version 2) with **two outside-review steps
-done by one dedicated ChatGPT chat**. ChatGPT is a reviewer from a different model family. It looks for problems at the
-two points where a shared blind spot costs most: the question lock and the finish.
+run by a Codex reviewer (OpenAI GPT models) through the OpenAI Codex CLI on the run machine**. The Codex reviewer is
+from a different model family. It looks for problems at the two points where a shared blind spot costs most: the
+question lock and the finish. The ChatGPT website is not used for these reviews.
 
-ChatGPT **never writes code, never sees the answer key or the data, and never votes.** Each issue it raises is advice
-that the Grok side must answer. The Grok side decides; the owner sees anything left unresolved.
+The Codex reviewer **never writes code, never sees the answer key or the data, and never votes.** Each issue it raises is
+advice that the Grok side must answer. The Grok side decides; the owner sees anything left unresolved.
+
+## How the review is run
+
+The review packet is a file on the run machine. The parent does not open the ChatGPT website and does not paste packets
+into a browser chat.
+
+1. Build and seal the OR packet as a file, with frozen input copies, as below.
+2. Send it with the OpenAI Codex CLI (default model). For a hard review, add `-m gpt-6-astra`:
+
+       codex exec --skip-git-repo-check "<prompt>" -o <output file>
+
+   The prompt includes the [standing instructions](roles/outside-reviewer.md) and names the packet file. It must not
+   inline anything the reviewer is not allowed to see.
+3. Codex writes the reply to the output file. Save that reply as a new versioned file at the packet's EXPECTED OUTPUT
+   path, have the run owner check it, then seal it.
+4. Run G0 on the captured reply and continue with dispositions, the owner card, and G2R or G5R.
+
+**Guardrail.** The prompt leaves the machine and is sent to OpenAI. Never include answer keys, private folders, secrets,
+or confidential raw data in the prompt or in the packet. Codex does not push, merge, share or publish.
 
 ## OR1: question lock (Stage 2)
 
@@ -29,11 +49,11 @@ that the Grok side must answer. The Grok side decides; the owner sees anything l
 An outside-review packet uses the normal [handoff format](handoff.md) with:
 
 - `ROLE: Outside Reviewer`, `STAGE: 2` (OR1) or `STAGE: 5` (OR2), packet id `<run>-OR1-<seq>` or `<run>-OR2-<seq>`;
-- every input a **frozen copy** under `artifacts/outside_review/<OR>/inputs/<original path>`, so what ChatGPT saw stays
-  sealed even when the original is later repaired as a new version;
+- every input a **frozen copy** under `artifacts/outside_review/<OR>/inputs/<original path>`, so what the Codex reviewer
+  saw stays sealed even when the original is later repaired as a new version;
 - `NOT ALLOWED TO SEE` naming the answer key (and, for OR1, the data: values and structure);
 - `RULES` including `do not write code` and `do not vote`;
-- `EXPECTED OUTPUT` naming exactly one path, where the parent captures ChatGPT's reply verbatim;
+- `EXPECTED OUTPUT` naming exactly one path, where the parent saves the versioned Codex reply;
 - `REPLY ENDS WITH: ANSWERED <PACKET_ID> after the numbered issues`.
 
 ## Reply format
@@ -82,7 +102,7 @@ or `- UNRESOLVED BLOCKING: none`. The owner's approval records the card's hash: 
 
 ## Usage limits
 
-If ChatGPT is blocked by a usage limit, retry up to 3 times, at least 5 minutes apart. If it is still blocked, proceed
+If Codex is blocked by a usage limit, retry up to 3 times, at least 5 minutes apart. If it is still blocked, proceed
 without it: set the review's status to `skipped`, log `OR-SKIPPED` in its record, mark the packet `skipped` in the
 packet index, and show `- OR-SKIPPED <OR>: <reason>` on the owner card. Every attempt is logged with its time and outcome.
 
@@ -97,6 +117,9 @@ packet index, and show `- OR-SKIPPED <OR>: <reason>` on the owner card. Every at
  "skip_log": "OR-SKIPPED ...",                                         (skipped)
  "card": {"path", "sha256"}}
 ```
+
+The field `reviewer` is the token `chatgpt`. It identifies the Codex reviewer (OpenAI GPT models). Do not rename the
+token.
 
 ## Gates
 

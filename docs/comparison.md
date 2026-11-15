@@ -2,7 +2,7 @@
 
 - **Version 1:** one ChatGPT chat does all five stages alone. It is scored on accuracy only. It cannot earn an official Design or Finish lock.
 - **Version 2:** the parent plus six child Grok bots. It seeks an official lock under these gates and is described as a same-family role split.
-- **Version 3:** this design, Version 2 plus a ChatGPT outside review at the question lock (OR1) and the finish (OR2). It seeks an official lock under these gates. It uses a ChatGPT chat separate from Version 1's, so Version 1 stays ChatGPT alone and Version 2 stays Grok alone.
+- **Version 3:** this design, Version 2 plus a Codex (OpenAI GPT models) outside review at the question lock (OR1) and the finish (OR2), run through the OpenAI Codex CLI on the run machine, not the ChatGPT website. It seeks an official lock under these gates. Version 1 stays a ChatGPT conversation and Version 2 stays Grok alone.
 
 ## Fairness
 Every version gets the same case pack, rules and stopping rules. No version sees another's work or the key. Version 3's outside reviewer sees only Version 3's own OR packets. The case must be fresh to both.

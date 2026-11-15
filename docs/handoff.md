@@ -50,14 +50,16 @@ MISSING INPUT: <item>
 - List the public schema, brief and bundle files as inputs in every packet that might need them, so a child can derive a value meaning or a mapping instead of stopping.
 - Never attach a template JSON (`*.example.json`) or any JSON with placeholder references as an input. Attach the adapted, real file or a prose summary (G0).
 
-## Outside-review packets for ChatGPT (Version 3)
+## Outside-review packets for the Codex reviewer (Version 3)
 - OR1 (Stage 2) and OR2 (Stage 5) packets use `ROLE: Outside Reviewer`. See [outside-review.md](outside-review.md).
+- The packet is a file on the run machine. Send it with `codex exec --skip-git-repo-check "<prompt>" -o <output file>` (default model; `-m gpt-6-astra` optional for a hard review). Save the reply as a versioned file at EXPECTED OUTPUT and have the run owner check it. Do not open the ChatGPT website or paste the packet into a browser chat.
+- Prompts leave the machine and are sent to OpenAI. Never include answer keys, private folders, secrets, or confidential raw data. Codex does not push, merge, share or publish.
 - Freeze a copy of every input under `artifacts/outside_review/<OR>/inputs/<original path>` and list the copies.
 - OR1: the brief, the proposed locked question and its terms only. No data, no data structure, no code.
 - OR2: the locked question, the claims ledger, its deliverables (the draft recommendation) and only the evidence its claims cite.
-- `RULES` include `do not write code` and `do not vote`. `EXPECTED OUTPUT` is one path, where the parent captures the reply.
+- `RULES` include `do not write code` and `do not vote`. `EXPECTED OUTPUT` is one path, where the parent saves the versioned Codex reply.
 - The reply is a numbered list of issues (`[blocking]` or `[minor]`, each with `Proposed fix:`), or `NO ISSUES`, ending `ANSWERED <PACKET_ID>`. It has no produced-files list.
-- If ChatGPT is usage-limited, retry up to 3 times, 5 minutes apart, then mark the packet `skipped` and log `OR-SKIPPED`.
+- If Codex is usage-limited, retry up to 3 times, 5 minutes apart, then mark the packet `skipped` and log `OR-SKIPPED`.
 
 ## Stage 3 packets for the Second Designer
 - First packet: Stage 3 inputs only. Do not include the Lead Designer's draft or reasoning.

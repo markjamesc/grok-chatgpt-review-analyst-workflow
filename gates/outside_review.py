@@ -1,8 +1,9 @@
-"""G2R and G5R: the ChatGPT outside reviews OR1 and OR2 (Version 3; docs/outside-review.md).
+"""G2R and G5R: the Codex (OpenAI GPT) outside reviews OR1 and OR2 (Version 3; docs/outside-review.md).
 
 OR1 runs after G2 (question lock checks) and before the owner approves the locked question. OR2 runs at Stage 5 after
-the draft finish; G5R runs after G5 and before the owner approves the finish package. ChatGPT never writes code, never
-sees the answer key and never votes: its issues are advice that the Grok side must answer, one disposition per issue.
+the draft finish; G5R runs after G5 and before the owner approves the finish package. The Codex reviewer never writes
+code, never sees the answer key and never votes: its issues are advice that the Grok side must answer, one disposition
+per issue. The record field reviewer remains the token "chatgpt".
 
 Inputs (project-relative; <OR> is OR1 or OR2):
   artifacts/outside_review/<OR>.json  {review, reviewer: "chatgpt", packet_id, status: done|skipped,

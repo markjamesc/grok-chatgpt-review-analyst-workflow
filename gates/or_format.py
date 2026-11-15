@@ -1,4 +1,4 @@
-"""Reply format of the ChatGPT outside reviews OR1 and OR2 (Version 3; docs/outside-review.md).
+"""Reply format of the Codex (OpenAI GPT) outside reviews OR1 and OR2 (Version 3; docs/outside-review.md).
 
 A reply is a numbered list of issues, each with a severity and a proposed fix, and ends with `ANSWERED <PACKET_ID>`:
 

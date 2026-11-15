@@ -27,7 +27,7 @@ Checks every packet in the index:
   `*.example.json`): R `finalize` walks every referenced JSON file and would fail on them (gates/guards.py);
 - every `MISSING INPUT: <item>` line in a sealed reply was checked against the public files (gates/derivability.py).
 
-Version 3 (ChatGPT outside review, docs/outside-review.md): ROLE `outside-reviewer` packets (OR1 at Stage 2, OR2 at
+Version 3 (Codex outside review, docs/outside-review.md): ROLE `outside-reviewer` packets (OR1 at Stage 2, OR2 at
 Stage 5) use the outside-review reply contract instead of a produced-files list. REPLY ENDS WITH must require
 `ANSWERED <PACKET_ID>` and numbered issues; EXPECTED OUTPUT names exactly one path, where the parent captures the
 reply verbatim; an answered reply is sealed at that path, ends with `ANSWERED <PACKET_ID>`, contains no code block, and

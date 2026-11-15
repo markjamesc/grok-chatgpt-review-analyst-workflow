@@ -1,6 +1,6 @@
-# Version 3: Grok Bot with ChatGPT outside review
+# Version 3: Grok Bot with Codex outside review
 
-This folder is the design of **Version 3** of a five-stage analyst workflow: the Grok Bot team workflow of Version 2 (a parent bot orchestrates; six child bots take named roles), plus **two outside-review steps done by one dedicated ChatGPT chat** (OR1 at the question lock, OR2 at the finish). It is published as a **public method repository**, a portable workflow design, not a case archive.
+This folder is the design of **Version 3** of a five-stage analyst workflow: the Grok Bot team workflow of Version 2 (a parent bot orchestrates; six child bots take named roles), plus **two outside-review steps run by a Codex reviewer (OpenAI GPT models) through the OpenAI Codex CLI on the run machine** (OR1 at the question lock, OR2 at the finish). It is published as a **public method repository**, a portable workflow design, not a case archive.
 
 It starts from the Version 2 repository (`grok-bot-analyst-workflow`, commit `4680958`) and adds only the outside review. Versions 1 and 2 are separate repositories and are unchanged.
 
@@ -8,24 +8,25 @@ A later push to `main` still needs a separate, single owner approval.
 
 ## What this is, and what it is not
 
-- It is the design for **Version 3** of a methods test with three versions: **Version 1**, one ChatGPT chat alone; **Version 2**, the Grok Bot team alone; **Version 3**, the Grok Bot team with ChatGPT as an outside reviewer (this repository). Version 3 shows whether an outside review from a different model family adds anything over Version 2.
+- It is the design for **Version 3** of a methods test with three versions: **Version 1**, one ChatGPT chat alone; **Version 2**, the Grok Bot team alone; **Version 3**, the Grok Bot team with a Codex reviewer (OpenAI GPT models) as an outside reviewer (this repository). Version 3 shows whether an outside review from a different model family adds anything over Version 2.
 - It incorporates the ten approved post-benchmark changes listed below.
 - It is **method only**. It contains no case data, private answer keys, evidence packets, live-file hashes, account names, emails, tokens, or private local paths.
 - It does **not** claim that the team is more accurate than a single model, or that same-family bots are independent in the way different model families can be.
 - Gate **code** is implemented here: every Python gate G0–G6 and GP is implemented and tested, including G5 (claims), G6 (certificate) and the Version 3 outside-review gates G2R and G5R, so a run can now reach a Python-gate certificate. It still needs the R Procedure Gate certificate and an owner approval of the exact finish package. See [gates/README.md](gates/README.md).
 
-## Version 3: ChatGPT outside review
+## Version 3: Codex outside review
 
-- **OR1 (Stage 2, after G2, before the owner locks the question).** ChatGPT gets the brief, the proposed locked question and its terms, with no data and no data structure, and lists any ambiguity or assumption that could change the answer.
-- **OR2 (Stage 5, after the draft finish, before G5 and the owner's finish approval).** ChatGPT gets the locked question, the official numbers, the draft recommendation and the claims, and says whether the conclusion follows and whether any claim exceeds the evidence.
+- **OR1 (Stage 2, after G2, before the owner locks the question).** The Codex reviewer gets the brief, the proposed locked question and its terms, with no data and no data structure, and lists any ambiguity or assumption that could change the answer.
+- **OR2 (Stage 5, after the draft finish, before G5 and the owner's finish approval).** The Codex reviewer gets the locked question, the official numbers, the draft recommendation and the claims, and says whether the conclusion follows and whether any claim exceeds the evidence.
 - Its reply is a numbered list of issues, each `[blocking]` or `[minor]` with a proposed fix, ending `ANSWERED <PACKET_ID>`.
-- ChatGPT never writes code, never sees the answer key and never votes. The Grok side answers every issue as fixed (where) or not fixed (reason). Every blocking issue left unfixed is shown on the owner's lock or finish card.
-- If ChatGPT is usage-limited: retry up to 3 times, 5 minutes apart, then proceed, log `OR-SKIPPED`, and show it to the owner.
+- The review packet is a file on the run machine, sent with `codex exec --skip-git-repo-check "<prompt>" -o <output file>` (default model; `-m gpt-6-astra` optional for a hard review). The reply is saved as a versioned file and checked by the run owner. Do not open the ChatGPT website or paste packets into a browser chat. Prompts leave the machine and are sent to OpenAI, so never include answer keys, private folders, secrets, or confidential raw data. Codex does not push, merge, share or publish.
+- The Codex reviewer never writes code, never sees the answer key and never votes. The Grok side answers every issue as fixed (where) or not fixed (reason). Every blocking issue left unfixed is shown on the owner's lock or finish card.
+- If Codex is usage-limited: retry up to 3 times, 5 minutes apart, then proceed, log `OR-SKIPPED`, and show it to the owner.
 - Gates **G2R** and **G5R** check all of this; G6 requires both reviews done or logged as skipped. Details: [docs/outside-review.md](docs/outside-review.md).
 
 ## Honest limit
 
-Every bot in the team is a Grok Bot, so they share one model family. The ChatGPT outside reviewer adds one other model family at two points; it is a reviewer, not a second team, and Version 3 must not be described as three-family independence. Separate instructions, memories, and packets are real process discipline. Agreement among them still counts for less than agreement across different model families. This design must be described as a **same-family role split**, never as three-family independence.
+Every bot in the team is a Grok Bot, so they share one model family. The Codex reviewer (OpenAI GPT models) adds one other model family at two points; it is a reviewer, not a second team, and Version 3 must not be described as three-family independence. Separate instructions, memories, and packets are real process discipline. Agreement among them still counts for less than agreement across different model families. This design must be described as a **same-family role split**, never as three-family independence.
 
 ## Roles
 
@@ -38,17 +39,17 @@ Every bot in the team is a Grok Bot, so they share one model family. The ChatGPT
 | Analyst R-A | Child bot | Independent judged analysis in R. |
 | Analyst R-B | Child bot | Second independent judged analysis in R. Does not see R-A before freeze. |
 | SQL Analyst | Child bot | SELECT-only SQL: data-feasibility check, Stage 3 source gates (parent runs, Risk Reviewer reviews), and an independent Stage 4 computation on the frozen hashed snapshot. |
-| Outside Reviewer (Version 3) | One dedicated ChatGPT chat | OR1 and OR2 outside reviews only. Never writes code, never sees the key or the data, never votes. |
+| Outside Reviewer (Version 3) | Codex reviewer (OpenAI GPT models), via the Codex CLI on the run machine | OR1 and OR2 outside reviews only. Never writes code, never sees the key or the data, never votes. |
 
 Role instructions: [docs/roles/](docs/roles/). **Stage 5 reuses these existing bots:** the Lead Designer writes the interpretation, the Second Designer checks the inference, and the Risk Reviewer audits every number (and may recompute arithmetic from sealed results, but never sees the answer key). There are no dedicated finish bots.
 
 ## Stages
 
 1. **Start** — the Lead Designer writes the Stage 1 decision document; the parent pins the workflow and checks it at G1.
-2. **Framing** — turn the decision into one precise, locked question. **Version 3:** after G2, ChatGPT reviews the proposed question (OR1, gate G2R) before the owner locks it.
+2. **Framing** — turn the decision into one precise, locked question. **Version 3:** after G2, the Codex reviewer reviews the proposed question (OR1, gate G2R) before the owner locks it.
 3. **Design** — lock how the question will be measured and tested. A **data-feasibility gate** sits between Stage 2 and Stage 3. In Stage 3 the SQL Analyst writes the SQL source gates; the parent runs them.
 4. **Execution** — write and check the code (R-A, R-B, and SELECT-only SQL on the frozen hashed snapshot). The parent reconciles SQL against R; the Risk Reviewer then checks the reconciled evidence.
-5. **Finish** — interpret the sealed results and recommend an action. **Version 3:** ChatGPT reviews the draft finish (OR2, gate G5R after G5) before the owner approves it. Scoring happens only after the freeze, by someone who was not a live role.
+5. **Finish** — interpret the sealed results and recommend an action. **Version 3:** the Codex reviewer reviews the draft finish (OR2, gate G5R after G5) before the owner approves it. Scoring happens only after the freeze, by someone who was not a live role.
 
 Details: [docs/stages.md](docs/stages.md) and [docs/explainer.md](docs/explainer.md).
 
@@ -96,8 +97,8 @@ The owner holds the copyright to this design. No license is granted, and no LICE
 | [docs/gates.md](docs/gates.md) | Gate list and what each one decides |
 | [docs/handoff.md](docs/handoff.md) | Packet format between parent and children |
 | [docs/comparison.md](docs/comparison.md) | Scoring protocol across Versions 1, 2 and 3 |
-| [docs/outside-review.md](docs/outside-review.md) | Version 3 ChatGPT outside review: OR1, OR2, reply format, dispositions, owner card, usage limits |
-| [docs/roles/](docs/roles/) | One file per bot, plus the ChatGPT outside reviewer |
+| [docs/outside-review.md](docs/outside-review.md) | Version 3 Codex outside review: how to run it with the Codex CLI, OR1, OR2, reply format, dispositions, owner card, usage limits |
+| [docs/roles/](docs/roles/) | One file per bot, plus the Codex outside reviewer |
 | [docs/lessons.md](docs/lessons.md) | How persistent lessons are recorded |
 | [docs/public-scope.md](docs/public-scope.md) | What must never go in this public repository |
 | [docs/rules.md](docs/rules.md) | Standing operating rules |

@@ -1,4 +1,4 @@
-"""Version 3: tests for the ChatGPT outside reviews OR1/OR2 (gates G2R, G5R), their G0 reply contract and the G6
+"""Version 3: tests for the Codex (OpenAI GPT) outside reviews OR1/OR2 (gates G2R, G5R), their G0 reply contract and the G6
 requirements. Parser tests need no R. The gate tests build the same R-certified project as test_finish_gates
 (every gate G1..G6 PASS in order, with OR1 and OR2 done), then plant one defect per test and assert the named
 check FAILs. No R counterpart exists for G2R/G5R (the R gate has no outside review), so there is no parity test for them.

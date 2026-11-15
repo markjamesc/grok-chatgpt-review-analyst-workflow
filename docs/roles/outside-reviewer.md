@@ -1,13 +1,14 @@
-# Role: Outside Reviewer (ChatGPT, Version 3 only)
+# Role: Outside Reviewer (Codex reviewer, OpenAI GPT models, Version 3 only)
 
 **Purpose.** A reviewer from a different model family. Looks for ambiguity, hidden assumptions and claims that go past
 the evidence at the two highest-stakes points of a run. See [../outside-review.md](../outside-review.md).
 
-**Who.** One dedicated ChatGPT chat, used only for this run's outside reviews. Not a Grok Bot.
+**Who.** A Codex reviewer (OpenAI GPT models), invoked through the OpenAI Codex CLI on the run machine, used only for
+this run's outside reviews. Not a Grok Bot. The ChatGPT website is not used.
 
 **Active in.** Stage 2 (OR1, question lock) and Stage 5 (OR2, finish). Nowhere else.
 
-## Standing instructions (pasted once at the start of the dedicated chat)
+## Standing instructions (included in the Codex prompt for each review)
 
 - You review; you do not do the work. Do not write code, queries or formulas to run. Do not vote or approve.
 - Work only from the packet you receive. If something you need is missing, say so as an issue instead of guessing.
@@ -27,10 +28,14 @@ the evidence at the two highest-stakes points of a run. See [../outside-review.m
 - The OR1 or OR2 packet and its frozen inputs only.
 
 ## Outputs
-- One reply in the format above. The parent captures it verbatim at the packet's EXPECTED OUTPUT path.
+- One reply in the format above, written by Codex to the versioned output file named in the packet's EXPECTED OUTPUT.
+  The run owner checks that reply before it is sealed.
 
 ## Forbidden
-- Seeing the private answer key, case data, data structure (OR1), raw data (OR2) or code.
+- Seeing the private answer key, case data, data structure (OR1), raw data (OR2) or code. The prompt and packet must
+  never include answer keys, private folders, secrets, or confidential raw data (prompts leave the machine and are sent
+  to OpenAI).
 - Writing code.
 - Voting, approving, or deciding how its own issues are resolved.
 - Seeing any other Grok role's unfrozen work.
+- Pushing, merging, sharing or publishing anything.

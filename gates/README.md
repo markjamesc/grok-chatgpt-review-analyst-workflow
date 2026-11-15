@@ -62,7 +62,7 @@ input still has the recorded hash** ("PASS by hash").
 | G0 | `artifacts/packets/index.json` {packets[{id, path, status draft/sent/answered/skipped (skipped: outside review only), sha256 (once sent), reply {path, sha256} (once answered), superseded_by?, superseded_reason?, superseded_at?}], forbidden_strings?, forbidden_path_prefixes? (`private/` always applies)}; each packet in the [handoff format](../docs/handoff.md); each reply ends with `PRODUCED FILES:` + `- <path>` lines, then `ANSWERED <PACKET_ID>` |
 | G5 | R `artifacts/stage5_interpretation_status.json`; `artifacts/stage5_claims.json` {deliverables[{path, sha256}], claims[{id, type, deliverable, quote, evidence[{path, sha256}], derived?[{value, basis}]}]}; reviews `artifacts/stage5/reviews/{second_designer_inference, risk_reviewer_numbers}.json`; current G4d record |
 | G6 | every gate record G0–G5, G2R, G5R; `artifacts/stage2_owner_question_approval.json`; `artifacts/outside_review/OR1.json`, `OR2.json`; `artifacts/stage5_owner_approval.json` {claims_sha256, deliverables[{path, sha256}], or2_card_sha256, approval_text, approval_timestamp}; R `artifacts/final_certificate.json` and `artifacts/procedure/run_state.json`; writes `artifacts/gates/G6.json` (the Grok certificate) |
-| G2R / G5R | `artifacts/outside_review/<OR>.json` {review, reviewer chatgpt, packet_id, status done/skipped, attempts[{at, outcome answered/usage_limit}], reply, dispositions, card, skip_log}; the OR packet and reply in the packet index; frozen inputs under `artifacts/outside_review/<OR>/inputs/`; `<OR>_dispositions.json`; `<OR>_card.md`; current G2 (OR1) or G5 (OR2) record. See [../docs/outside-review.md](../docs/outside-review.md) |
+| G2R / G5R | `artifacts/outside_review/<OR>.json` {review, reviewer chatgpt (token identifying the Codex reviewer, OpenAI GPT models), packet_id, status done/skipped, attempts[{at, outcome answered/usage_limit}], reply, dispositions, card, skip_log}; the OR packet and reply in the packet index; frozen inputs under `artifacts/outside_review/<OR>/inputs/`; `<OR>_dispositions.json`; `<OR>_card.md`; current G2 (OR1) or G5 (OR2) record. See [../docs/outside-review.md](../docs/outside-review.md) |
 | GP | `artifacts/assembly/index.json` {assemblies[{split}]}; split specs, replies, part files, outputs and transform logs |
 
 A review record is {role, subjects[{path, sha256}], findings[{id, class must_fix|advisory, status open|closed}]}. It counts
@@ -98,7 +98,7 @@ only if every current subject is listed at the same path with the current hash; 
   no code; one disposition per issue with the reply's severity; `fixed` gives where and files sealed by the current
   base gate; `not_fixed` gives a reason; decided by a Grok role. Skipped: first send + 3 retries, all usage-limited,
   5+ min apart, `OR-SKIPPED` logged. The owner card lists exactly the unresolved blocking issues (or says none) and
-  shows `OR-SKIPPED` when skipped. ChatGPT's opinion is never a gate verdict.
+  shows `OR-SKIPPED` when skipped. The Codex reviewer's opinion is never a gate verdict.
 - **G6:** each gate ran after the gates it depends on (record timestamps; G2R after G2, G2F after G2R, G5R after G5); G2R
   and G5R done or skipped; G0's skipped packets are exactly the logged skips; `stage2_owner_question_approval.json`
   {framing_sha256, or1_card_sha256, approval_text, approval_timestamp} and `or2_card_sha256` in the finish approval

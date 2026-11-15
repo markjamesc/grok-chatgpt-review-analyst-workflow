@@ -2,6 +2,12 @@
 
 All notable changes to this design draft are recorded here. Dates are America/Chicago.
 
+## 0.3.2 — 2026-11-15
+
+- **Outside review runs through the OpenAI Codex CLI**, not the ChatGPT website. The OR1 and OR2 packet is a file on the run machine, sent with `codex exec --skip-git-repo-check "<prompt>" -o <output file>` (default model; `-m gpt-6-astra` optional for a hard review). The reply is saved as a versioned file and checked by the run owner. The reviewer is the Codex reviewer (OpenAI GPT models). The record token `reviewer: "chatgpt"` is unchanged.
+- Guardrail: prompts leave the machine and are sent to OpenAI, so never include answer keys, private folders, secrets, or confidential raw data. Codex does not push, merge, share or publish.
+- Docs only (README, outside review, roles, stages, rules, handoff, gates, comparison, explainer, and module comments). Gate checks, the record schema, tests and fixtures are unchanged. Historical changelog entries and Version 1 ChatGPT-chat wording are left as they were.
+
 ## 0.3.1 — 2026-11-10
 
 Process fixes from the second head-to-head case (no case content or answers). Lessons in docs/lessons.md.
